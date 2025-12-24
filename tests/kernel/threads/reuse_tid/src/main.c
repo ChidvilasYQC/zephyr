@@ -17,7 +17,7 @@ volatile bool expect_fault;
 struct k_thread test_thread_creator;
 struct k_thread test_thread_reused;
 
-K_SEM_DEFINE(test_sem, 0, 1);
+atomic_t thread_reuse_count;
 
 static K_KERNEL_STACK_DEFINE(test_thread_creator_stack, TEST_THREAD_STACKSIZE);
 static K_KERNEL_STACK_DEFINE(test_thread_reused_stack, TEST_THREAD_STACKSIZE);
@@ -39,8 +39,18 @@ void k_sys_fatal_error_handler(unsigned int reason, const struct arch_esf *pEsf)
 void reused_thread_waitforever(void *p1, void *p2, void *p3)
 {
 	printf("In wait forver reused thread\n");
-	k_sem_take(&test_sem, K_FOREVER);
-	ztest_test_fail();
+	atomic_val_t prev_val = atomic_inc(&thread_reuse_count);
+	if (prev_val == 0) {
+		k_sleep(K_FOREVER);
+	} else {
+		/**
+		 * using ztest_test_fail() here will not work
+		 * since the thread states are corrupted
+		 *
+		 * so, raisng a fault to indicate failure
+		 */
+		z_except_reason(K_ERR_ARCH_START + 0x1000);
+	}
 }
 
 void reused_thread_return(void *p1, void *p2, void *p3)
@@ -80,14 +90,9 @@ static void creator_thread(void *p1, void *p2, void *p3)
 			       reused_thread_waitforever, NULL, NULL, NULL,
 			       TEST_THREAD_REUSED_PRIORITY, 0, K_NO_WAIT);
 
-	printf("Giving test sem\n");
-	k_sem_give(&test_sem);
-	printf("Giving test sem again\n");
-	k_sem_give(&test_sem);
-
-	k_thread_join(tid1, K_FOREVER);
-
-	ztest_test_fail();
+	if (tid2 != 0) {
+		ztest_test_fail();
+	}
 }
 
 ZTEST(reuse_tid, test_tid_reuse)
