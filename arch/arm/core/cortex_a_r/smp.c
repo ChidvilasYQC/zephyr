@@ -153,6 +153,10 @@ void arch_cpu_start(int cpu_num, k_thread_stack_t *stack, int sz, arch_cpustart_
 			(void *)&arm_cpu_boot_params,
 			sizeof(arm_cpu_boot_params));
 
+	/* flush and invalidate bootup stack for other CPUs (z_arm_sys_stack) */
+	sys_cache_data_flush_and_invd_range((void *)&z_arm_sys_stack[cpu_num],
+					    sizeof(z_arm_sys_stack[0]));
+
 #ifdef CONFIG_PM_CPU_OPS
 	if (pm_cpu_on(cpu_mpid, (uintptr_t)&__start)) {
 		printk("Failed to boot secondary CPU core %d (MPID:%#x)\n",
@@ -242,7 +246,7 @@ static void send_ipi(unsigned int ipi, uint32_t cpu_bitmap)
 		uint32_t target_mpidr = cpu_map[i];
 		uint8_t aff0;
 
-		if (mpidr == target_mpidr || mpidr == INV_MPID) {
+		if (mpidr == target_mpidr || target_mpidr == INV_MPID) {
 			continue;
 		}
 

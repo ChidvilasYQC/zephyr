@@ -7,7 +7,7 @@
 /*
  * Derived from DTS extracted with:
  *
- *   qemu-system-aarch64 -machine virt,gic-version=2,secure=off -cpu cortex-a7
+ *   qemu-system-aarch64 -machine virt,gic-version=3,secure=off -cpu cortex-a7
  *         -smp 2 -machine dumpdtb=virt.dtb
  *
  *   dtc -I dtb -O dts virt.dtb
@@ -73,9 +73,9 @@
 		interrupt-parent = <&gic>;
 
 		gic: interrupt-controller@8000000 {
-			compatible = "arm,gic-400", "arm,gic-v2", "arm,gic";
-			reg = <0x8000000 0x10000>,
-			      <0x8010000 0x10000>;
+			compatible = "arm,gic-v3", "arm,gic";
+			reg = <0x8000000 0x010000>,
+			      <0x80a0000 0xf60000>;
 			interrupt-controller;
 			#interrupt-cells = <4>;
 			status = "okay";
